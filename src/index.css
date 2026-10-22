@@ -1,0 +1,271 @@
+/* ==========================================================================
+   IntelliHire AI — Floating Glass Architecture Design System
+   Palette: Warm Ivory, Deep Navy, Cobalt–Teal Accents, Glass Surfaces
+   ========================================================================== */
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--bg-canvas);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--bg-surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--navy-900);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--bg-subtle);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--bg-subtle);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--cobalt-50);
+  --color-accent-foreground: var(--cobalt-900);
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--cobalt-400);
+}
+
+:root {
+  /* ── Core Foundation ─────────────────────────────────────────── */
+  --pure-white:   #ffffff;
+  --ivory-50:     #fdfcf9;
+  --ivory-100:    #f8f6f0;
+  --ivory-200:    #ede9df;
+  --ivory-300:    #ddd8cc;
+
+  /* ── Deep Navy Typography ─────────────────────────────────────── */
+  --navy-950: #07090f;
+  --navy-900: #0c1120;
+  --navy-800: #111827;
+  --navy-700: #1e2a3d;
+  --navy-600: #2d3e56;
+  --navy-500: #4a5f7a;
+  --navy-400: #6e859e;
+  --navy-300: #9bafc5;
+  --navy-200: #c4d1df;
+  --navy-100: #e5ecf3;
+
+  /* ── Cobalt–Teal Accent ───────────────────────────────────────── */
+  --cobalt-900: #1a2d7a;
+  --cobalt-800: #1e3a8a;
+  --cobalt-700: #1d4ed8;
+  --cobalt-600: #2563eb;
+  --cobalt-500: #3b82f6;
+  --cobalt-400: #60a5fa;
+  --cobalt-300: #93c5fd;
+  --cobalt-200: #bfdbfe;
+  --cobalt-100: #dbeafe;
+  --cobalt-50:  #eff6ff;
+
+  /* ── Teal Secondary Accent ────────────────────────────────────── */
+  --teal-600: #0d9488;
+  --teal-500: #14b8a6;
+  --teal-400: #2dd4bf;
+  --teal-200: #99f6e4;
+  --teal-100: #ccfbf1;
+
+  /* ── Semantic Tokens ──────────────────────────────────────────── */
+  --bg-canvas:   transparent;
+  --bg-subtle:   rgba(255, 255, 255, 0.10);
+  --bg-surface:  rgba(255, 255, 255, 0.14);
+  --bg-elevated: rgba(255, 255, 255, 0.18);
+  --bg-hover:    rgba(255, 255, 255, 0.22);
+  --bg-active:   rgba(255, 255, 255, 0.26);
+
+  --border-subtle:  rgba(255, 255, 255, 0.35);
+  --border-default: rgba(255, 255, 255, 0.50);
+  --border-strong:  rgba(255, 255, 255, 0.65);
+  --border-cobalt:  rgba(59, 130, 246, 0.35);
+  --border-light:   rgba(255, 255, 255, 0.40);
+
+  --text-primary:   var(--navy-900);
+  --text-secondary: var(--navy-600);
+  --text-muted:     var(--navy-400);
+  --text-disabled:  var(--navy-300);
+  --text-inverted:  #ffffff;
+
+  /* ── Glass System ─────────────────────────────────────────────── */
+  --glass-bg:            rgba(255, 255, 255, 0.14);
+  --glass-bg-elevated:   rgba(255, 255, 255, 0.18);
+  --glass-bg-frosted:    rgba(255, 255, 255, 0.12);
+  --glass-border:        rgba(255, 255, 255, 0.50);
+  --glass-border-subtle: rgba(255, 255, 255, 0.35);
+  --glass-border-strong: rgba(255, 255, 255, 0.65);
+  --glass-border-blue:   rgba(147, 197, 253, 0.45);
+  --glass-shadow:        0 8px 32px -4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.45);
+  --glass-blur:          blur(18px);
+  --glass-blur-heavy:    blur(24px);
+
+  /* ── Typography ───────────────────────────────────────────────── */
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  /* ── Radius ───────────────────────────────────────────────────── */
+  --radius-xs:   5px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   18px;
+  --radius-xl:   24px;
+  --radius-2xl:  32px;
+  --radius-full: 9999px;
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  --topbar-height:  60px;
+  --sidebar-width:  240px;
+
+  /* ── Shadows ──────────────────────────────────────────────────── */
+  --shadow-ambient: 0 1px 4px rgba(7, 9, 15, 0.03);
+  --shadow-xs:  0 1px 3px rgba(7, 9, 15, 0.06), 0 1px 2px rgba(7, 9, 15, 0.04);
+  --shadow-sm:  0 2px 8px -1px rgba(7, 9, 15, 0.07), 0 1px 3px rgba(7, 9, 15, 0.04);
+  --shadow-md:  0 8px 28px -6px rgba(7, 9, 15, 0.10), 0 2px 8px -2px rgba(7, 9, 15, 0.05);
+  --shadow-lg:  0 20px 56px -12px rgba(7, 9, 15, 0.14), 0 4px 14px -3px rgba(7, 9, 15, 0.06);
+  --shadow-xl:  0 32px 80px -16px rgba(7, 9, 15, 0.18), 0 8px 24px -4px rgba(7, 9, 15, 0.08);
+  --shadow-glass: 0 8px 32px -8px rgba(7, 9, 15, 0.12), 0 0 0 1px rgba(255,255,255,0.7), inset 0 1px 0 rgba(255,255,255,0.9);
+  --shadow-cobalt: 0 8px 24px -6px rgba(59, 130, 246, 0.28);
+
+  /* ── Transitions ──────────────────────────────────────────────── */
+  --transition-fast:   150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow:   600ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Legacy compat aliases */
+  --pure-white:       #ffffff;
+  --pearl-50:         var(--ivory-50);
+  --pearl-100:        var(--ivory-100);
+  --pearl-200:        var(--ivory-200);
+  --main-black:       var(--navy-900);
+  --secondary-black:  var(--navy-800);
+  --background-gray:  rgba(255, 255, 255, 0.10);
+  --soft-surface:     rgba(255, 255, 255, 0.14);
+  --border-color:     var(--border-default);
+  --border-strong:    var(--border-strong);
+  --muted-text:       var(--navy-400);
+  --shadow-window:    var(--shadow-lg);
+
+  /* Rose kept as-is for legacy components */
+  --rose-50:   #fff1f2;
+  --rose-100:  #ffe4e6;
+  --rose-200:  #fecdd3;
+  --rose-300:  #fda4b4;
+  --rose-400:  #fb718b;
+  --rose-500:  #f43f5e;
+  --rose-600:  #e11d48;
+  --rose-900:  #881337;
+  --border-rose: rgba(244, 63, 104, 0.25);
+
+  /* Charcoal compat */
+  --charcoal-950: var(--navy-950);
+  --charcoal-900: var(--navy-900);
+  --charcoal-800: var(--navy-800);
+  --charcoal-700: var(--navy-700);
+  --charcoal-600: var(--navy-600);
+  --charcoal-500: var(--navy-500);
+  --charcoal-400: var(--navy-400);
+  --charcoal-300: var(--navy-300);
+}
+
+/* CSS Reset & Defaults */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: #dbeafe;
+}
+
+body {
+  background-color: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  background-color: transparent;
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  transition: all var(--transition-fast);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--cobalt-400);
+  outline-offset: 2px;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+code, pre {
+  font-family: var(--font-mono);
+}
+
+/* Refined Clean Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--navy-200); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--navy-300); }
+
+/* Text Selection */
+::selection {
+  background: var(--cobalt-200);
+  color: var(--navy-900);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

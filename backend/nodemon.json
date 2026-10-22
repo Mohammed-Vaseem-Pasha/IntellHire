@@ -1,0 +1,11 @@
+{
+  "watch": [
+    "server.js"
+  ],
+  "ext": "js",
+  "ignore": [
+    "node_modules/**",
+    "*.json",
+    "*firebase-adminsdk*.json"
+  ]
+}

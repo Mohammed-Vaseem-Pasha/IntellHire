@@ -1,0 +1,19 @@
+node_modules/
+.env
+serviceAccountKey.json
+# Private environment variables
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Firebase Admin credentials
+serviceAccountKey.json
+firebaseAdminSDK.json
+firebase-adminsdk-*.json
+*service-account*.json
+
+# Backup files
+backend/server.js.backup
