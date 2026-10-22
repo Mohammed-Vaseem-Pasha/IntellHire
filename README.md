@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # IntelliHire AI
 
 IntelliHire AI is a career-preparation app with a React/Vite frontend and an
@@ -78,3 +79,7 @@ the project root. The frontend production build is available through
 The backend requires its Firebase Admin credentials, MongoDB connection
 settings, and `GROQ_API_KEY` in its local environment configuration. Keep
 credentials and API keys out of frontend code and source control.
+=======
+# IntellHire
+IntelliHire AI is an AI-powered platform for mock interviews, instant feedback, performance scoring, resume ATS analysis, and personalized career preparation.
+>>>>>>> 9bee750963316782705991076ac5ff635d48e39a
