@@ -39,22 +39,6 @@ export default function CinematicLoginView({
       {/* Shared animated background — same component as authenticated shell */}
       <GlassBackground />
 
-      {/* Floating context chips */}
-      <div className="ugl-chips" aria-hidden="true">
-        <div className="ugl-chip ugl-chip-1">
-          <span className="ugl-chip-dot ugl-chip-dot-blue" />
-          <span>ATS Scoring</span>
-        </div>
-        <div className="ugl-chip ugl-chip-2">
-          <span className="ugl-chip-dot ugl-chip-dot-teal" />
-          <span>Voice Interview</span>
-        </div>
-        <div className="ugl-chip ugl-chip-3">
-          <span className="ugl-chip-dot ugl-chip-dot-lavender" />
-          <span>Career Roadmap</span>
-        </div>
-      </div>
-
       {/* Central auth card — genuinely translucent */}
       <div className="ugl-card-wrap">
         <div className="ugl-card">
