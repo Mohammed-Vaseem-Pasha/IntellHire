@@ -64,7 +64,7 @@ import {
 } from "lucide-react";
 import "./App.css";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://intellhire.onrender.com";
 const configuredAnswerPause = getAnswerPauseTimeout(
   import.meta.env?.VITE_INTERVIEW_ANSWER_PAUSE_MS,
 );
@@ -616,14 +616,14 @@ export default function App() {
       if (err?.code === "auth/popup-blocked") {
         setError(
           "Sign-in popup was blocked by your browser. " +
-            "Allow popups for this site and try again."
+          "Allow popups for this site and try again."
         );
         return;
       }
       console.error("Login error:", err);
       setError(
         err?.message ||
-          "Sign-in failed. Please try again."
+        "Sign-in failed. Please try again."
       );
     }
   }
@@ -851,12 +851,12 @@ export default function App() {
     } = {}
   ) {
     console.log("[SPEECH DEBUG]", {
-  text,
-  questionIndex,
-  responseId,
-  trigger,
-  time: performance.now(),
-});
+      text,
+      questionIndex,
+      responseId,
+      trigger,
+      time: performance.now(),
+    });
     if (!text) return;
 
     const didStartPlayback = speechPlaybackGateRef.current.claim(responseId);
@@ -1373,8 +1373,8 @@ export default function App() {
               : data.reportStatus === "failed"
                 ? "failed"
                 : data.reportStatus === "pending" || data.reportStatus === "generating"
-                ? "pending"
-                : "not_started"
+                  ? "pending"
+                  : "not_started"
           );
           setInterviewCompletionMessage(data.finalMessage || "Thank you for your time. That concludes your interview. Your interview is now complete.");
           setInterviewPhase("completed", questionIndex);
@@ -1441,8 +1441,8 @@ export default function App() {
             : data.reportStatus === "failed"
               ? "failed"
               : data.reportStatus === "pending" || data.reportStatus === "generating"
-              ? "pending"
-              : "not_started"
+                ? "pending"
+                : "not_started"
         );
         setInterviewCompletionMessage(data.finalMessage || "Thank you for your time. That concludes your interview. Your interview is now complete.");
         setInterviewPhase("completed", questionIndex);
@@ -1560,21 +1560,21 @@ export default function App() {
         questionIndex,
         autoListen: false,
         onSpeechEnd: () => {
-        if (
-          !autoInterviewRef.current ||
-          submittingRef.current ||
-          !(interviewSessionIdRef.current || interviewSessionId) ||
-          questionIndex !== interviewQuestionIndexRef.current
-        ) {
-          recoveryInProgressRef.current = false;
-          return;
-        }
-        if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
-        retryTimerRef.current = window.setTimeout(() => {
-          retryTimerRef.current = null;
-          recoveryInProgressRef.current = false;
-          startVoiceAnswer(questionIndex);
-        }, 700);
+          if (
+            !autoInterviewRef.current ||
+            submittingRef.current ||
+            !(interviewSessionIdRef.current || interviewSessionId) ||
+            questionIndex !== interviewQuestionIndexRef.current
+          ) {
+            recoveryInProgressRef.current = false;
+            return;
+          }
+          if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+          retryTimerRef.current = window.setTimeout(() => {
+            retryTimerRef.current = null;
+            recoveryInProgressRef.current = false;
+            startVoiceAnswer(questionIndex);
+          }, 700);
         },
         responseId: `${interviewSessionIdRef.current || interviewSessionId}:voice-retry:${questionIndex}:${retryNumber}`,
         trigger: "voice-retry",
@@ -2307,10 +2307,10 @@ export default function App() {
                 {agents.map(({ id, name, tagline, description, capabilities, icon: Icon, code }) => {
                   const hasData =
                     id === "resume" ? resumeRecords.length > 0 :
-                    id === "interview" ? interviewHistory.length > 0 :
-                    id === "feedback" ? interviewHistory.length > 0 :
-                    id === "roadmap" ? !!roadmapData :
-                    false;
+                      id === "interview" ? interviewHistory.length > 0 :
+                        id === "feedback" ? interviewHistory.length > 0 :
+                          id === "roadmap" ? !!roadmapData :
+                            false;
                   return (
                     <button
                       key={id}
@@ -2357,7 +2357,7 @@ export default function App() {
             {analysisStatus === "completed" && analysisResult ? (
               <div className="analysis-results-view">
                 {/* Hero Score Card */}
-                          <div className="results-hero-card">
+                <div className="results-hero-card">
                   <div className="ats-score-badge-box">
                     <div className="ats-score-dial"><strong>{analysisResult.atsMatchScore}%</strong><small>{analysisResult.isJobSpecific ? "JOB MATCH" : "QUALITY"}</small></div>
                     <div className="ats-score-meta">
@@ -2459,7 +2459,7 @@ export default function App() {
                       {analysisResult.experienceAndEducation.experienceStatus}). Education:{" "}
                       {analysisResult.experienceAndEducation.candidateEducation}
                       {analysisResult.isJobSpecific &&
-                      analysisResult.experienceAndEducation.requiredEducation !== "Not explicitly stated"
+                        analysisResult.experienceAndEducation.requiredEducation !== "Not explicitly stated"
                         ? `; job asks for ${analysisResult.experienceAndEducation.requiredEducation}`
                         : ""}
                     </p>
@@ -2786,34 +2786,34 @@ export default function App() {
                       {interviewStatus === "preparing-speech"
                         ? "Preparing interviewer audio..."
                         : interviewStatus === "asking"
-                        ? "Interviewer is speaking..."
-                        : interviewStatus === "listening"
-                          ? "Listening to your answer..."
-                          : interviewStatus === "retrying"
-                            ? "Retrying microphone automatically..."
-                            : interviewStatus === "submitting"
-                              ? "Submitting your answer..."
-                              : interviewStatus === "evaluating"
-                              ? "Evaluating your answer..."
-                              : interviewStatus === "starting"
-                                ? "Starting interview..."
-                                : interviewStatus === "answer-error"
-                                  ? "Your answer is preserved. Review the error below and retry submission."
-                                : interviewStatus === "voice-error"
-                                  ? "Voice input needs attention. You can type your answer."
-                                  : "Preparing the next step..."}
+                          ? "Interviewer is speaking..."
+                          : interviewStatus === "listening"
+                            ? "Listening to your answer..."
+                            : interviewStatus === "retrying"
+                              ? "Retrying microphone automatically..."
+                              : interviewStatus === "submitting"
+                                ? "Submitting your answer..."
+                                : interviewStatus === "evaluating"
+                                  ? "Evaluating your answer..."
+                                  : interviewStatus === "starting"
+                                    ? "Starting interview..."
+                                    : interviewStatus === "answer-error"
+                                      ? "Your answer is preserved. Review the error below and retry submission."
+                                      : interviewStatus === "voice-error"
+                                        ? "Voice input needs attention. You can type your answer."
+                                        : "Preparing the next step..."}
                     </strong>
                     {interviewStatus === "voice-error" &&
                       (window.SpeechRecognition || window.webkitSpeechRecognition) && (
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => void retryMicrophoneAccess(interviewQuestionIndexRef.current)}
-                        disabled={interviewBusy}
-                      >
-                        Retry Microphone
-                      </button>
-                    )}
+                        <button
+                          type="button"
+                          className="btn-secondary"
+                          onClick={() => void retryMicrophoneAccess(interviewQuestionIndexRef.current)}
+                          disabled={interviewBusy}
+                        >
+                          Retry Microphone
+                        </button>
+                      )}
                     <button type="button" className="btn-secondary" onClick={() => void endInterview()} disabled={interviewBusy}>
                       End Interview
                     </button>
@@ -2889,7 +2889,7 @@ export default function App() {
                             ? "Interview Finished — Report Save Failed"
                             : interviewReportStatus === "not_started"
                               ? "Interview Ended"
-                            : "Saving Final Report"}
+                              : "Saving Final Report"}
                       </h2>
                       <p>
                         {interviewReportStatus === "generating" || interviewReportStatus === "pending"
@@ -2898,7 +2898,7 @@ export default function App() {
                             ? "The interview answers are saved, but the final feedback report was not saved. Retry to finish saving it."
                             : interviewReportStatus === "not_started"
                               ? "The interview ended before an answer was evaluated, so a scored report is not available."
-                            : "Your session has finished. Review the final report below."}
+                              : "Your session has finished. Review the final report below."}
                       </p>
                     </div>
                     {interviewReportStatus === "ready" ? <CheckCircle2 size={22} /> : <Clock size={22} />}
@@ -3376,207 +3376,207 @@ export default function App() {
               });
               const completedCount = roadmapMilestoneProgress.filter(m => m.status === "completed").length;
               return (
-              <div>
-                {/* Save banner — only when not yet saved */}
-                {roadmapSaveStatus !== "saved" && (
-                  <div className="roadmap-save-banner" style={{ marginBottom: 20 }}>
-                    <p>
-                      {roadmapSaveStatus === "saving"
-                        ? "Saving roadmap…"
-                        : roadmapSaveStatus === "error"
-                        ? "Save failed — please try again."
-                        : "Save this roadmap to track your milestone progress across sessions."}
-                    </p>
-                    <button
-                      className="btn-primary"
-                      type="button"
-                      onClick={() => void saveRoadmap()}
-                      disabled={roadmapSaveStatus === "saving"}
-                      style={{ flexShrink: 0 }}
-                    >
-                      <Save size={14} />
-                      {roadmapSaveStatus === "saving" ? "Saving…" : "Save Roadmap"}
-                    </button>
-                  </div>
-                )}
-                {roadmapSaveStatus === "saved" && allMilestones.length > 0 && (
-                  <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--navy-600)" }}>
-                    <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
-                    Roadmap saved · {completedCount}/{allMilestones.length} milestones completed
-                  </div>
-                )}
-
-                {/* Executive Overview */}
-                <div className="studio-panel" style={{ marginBottom: 20, background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(16,185,129,0.05))" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
-                    <div>
-                      <div className="workspace-eyebrow" style={{ color: "var(--accent-color)" }}>CAREER BLUEPRINT</div>
-                      <h2 style={{ margin: "4px 0 8px 0" }}>{roadmapData.role} Roadmap</h2>
-                      <p style={{ color: "var(--text-secondary)", maxWidth: 720 }}>{roadmapData.overview}</p>
+                <div>
+                  {/* Save banner — only when not yet saved */}
+                  {roadmapSaveStatus !== "saved" && (
+                    <div className="roadmap-save-banner" style={{ marginBottom: 20 }}>
+                      <p>
+                        {roadmapSaveStatus === "saving"
+                          ? "Saving roadmap…"
+                          : roadmapSaveStatus === "error"
+                            ? "Save failed — please try again."
+                            : "Save this roadmap to track your milestone progress across sessions."}
+                      </p>
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => void saveRoadmap()}
+                        disabled={roadmapSaveStatus === "saving"}
+                        style={{ flexShrink: 0 }}
+                      >
+                        <Save size={14} />
+                        {roadmapSaveStatus === "saving" ? "Saving…" : "Save Roadmap"}
+                      </button>
                     </div>
-                    <span className="phase-skill-pill" style={{ fontSize: 13, padding: "6px 12px" }}>
-                      Level: {roadmapData.experienceLevel || roadmapExperienceLevel}
-                    </span>
-                  </div>
-                </div>
+                  )}
+                  {roadmapSaveStatus === "saved" && allMilestones.length > 0 && (
+                    <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--navy-600)" }}>
+                      <CheckCircle2 size={15} style={{ color: "#22c55e" }} />
+                      Roadmap saved · {completedCount}/{allMilestones.length} milestones completed
+                    </div>
+                  )}
 
-                {/* Structured Roadmap Stages */}
-                <div className="roadmap-timeline">
-                  {(roadmapData.phases || []).map((phase, i) => (
-                    <div className="timeline-phase-card" key={phase.title || i}>
-                      <div className="phase-number-indicator">
-                        {String(phase.phaseNumber || i + 1).padStart(2, "0")}
+                  {/* Executive Overview */}
+                  <div className="studio-panel" style={{ marginBottom: 20, background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(16,185,129,0.05))" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+                      <div>
+                        <div className="workspace-eyebrow" style={{ color: "var(--accent-color)" }}>CAREER BLUEPRINT</div>
+                        <h2 style={{ margin: "4px 0 8px 0" }}>{roadmapData.role} Roadmap</h2>
+                        <p style={{ color: "var(--text-secondary)", maxWidth: 720 }}>{roadmapData.overview}</p>
                       </div>
-                      <div className="phase-content" style={{ width: "100%" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-                          <h3 style={{ margin: 0 }}>{phase.title}</h3>
-                          {phase.duration && (
-                            <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 600 }}>
-                              {phase.duration}
-                            </span>
-                          )}
+                      <span className="phase-skill-pill" style={{ fontSize: 13, padding: "6px 12px" }}>
+                        Level: {roadmapData.experienceLevel || roadmapExperienceLevel}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Structured Roadmap Stages */}
+                  <div className="roadmap-timeline">
+                    {(roadmapData.phases || []).map((phase, i) => (
+                      <div className="timeline-phase-card" key={phase.title || i}>
+                        <div className="phase-number-indicator">
+                          {String(phase.phaseNumber || i + 1).padStart(2, "0")}
                         </div>
-
-                        {phase.description && (
-                          <p style={{ margin: "8px 0 14px 0", color: "var(--text-secondary)" }}>
-                            {phase.description}
-                          </p>
-                        )}
-
-                        {/* Skills to Master */}
-                        {Array.isArray(phase.skills) && phase.skills.length > 0 && (
-                          <div style={{ marginBottom: 12 }}>
-                            <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-text)" }}>Key Competencies &amp; Technologies</strong>
-                            <div className="phase-skills-row" style={{ marginTop: 6 }}>
-                              {phase.skills.map((skill) => (
-                                <span key={skill} className="phase-skill-pill">{skill}</span>
-                              ))}
-                            </div>
+                        <div className="phase-content" style={{ width: "100%" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+                            <h3 style={{ margin: 0 }}>{phase.title}</h3>
+                            {phase.duration && (
+                              <span style={{ fontSize: 12, color: "var(--muted-text)", fontWeight: 600 }}>
+                                {phase.duration}
+                              </span>
+                            )}
                           </div>
-                        )}
 
-                        {/* Recommended Projects */}
-                        {Array.isArray(phase.projects) && phase.projects.length > 0 && (
-                          <div style={{ marginBottom: 12, background: "rgba(0,0,0,0.02)", padding: "10px 14px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
-                            <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-primary)" }}>Recommended Hands-on Projects:</strong>
-                            <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
-                              {phase.projects.map((proj, pIdx) => (
-                                <li key={pIdx} style={{ fontSize: 13, margin: "4px 0", color: "var(--text-secondary)" }}>{proj}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
+                          {phase.description && (
+                            <p style={{ margin: "8px 0 14px 0", color: "var(--text-secondary)" }}>
+                              {phase.description}
+                            </p>
+                          )}
 
-                        {/* Interactive Milestone Tracker */}
-                        {Array.isArray(phase.milestones) && phase.milestones.length > 0 && (() => {
-                          // Compute global offset for milestones in this phase
-                          let offset = 0;
-                          for (let pi = 0; pi < i; pi++) {
-                            offset += (roadmapData.phases[pi]?.milestones?.length || 0);
-                          }
-                          return (
-                            <div>
-                              <p className="milestone-tracker-heading">Mastery Milestones</p>
-                              <div className="milestone-list">
-                                {phase.milestones.map((milestone, mIdx) => {
-                                  const globalIdx = offset + mIdx;
-                                  const prog = roadmapMilestoneProgress[globalIdx];
-                                  const isDone = prog?.status === "completed";
-                                  const note = prog?.note || "";
-                                  const canTrack = roadmapSaveStatus === "saved";
-                                  return (
-                                    <div
-                                      key={mIdx}
-                                      className={`milestone-item${isDone ? " completed-milestone" : ""}`}
-                                    >
-                                      <button
-                                        className={`milestone-checkbox-btn${isDone ? " checked" : ""}`}
-                                        title={canTrack ? (isDone ? "Mark incomplete" : "Mark complete") : "Save roadmap first to track milestones"}
-                                        disabled={!canTrack}
-                                        onClick={() => canTrack && void updateMilestone(
-                                          globalIdx,
-                                          isDone ? "pending" : "completed",
-                                          note
-                                        )}
-                                      >
-                                        {isDone && <Check size={13} />}
-                                      </button>
-                                      <div className="milestone-body">
-                                        <p className="milestone-title">{milestone}</p>
-                                        {canTrack && (
-                                          <textarea
-                                            className="milestone-note-input"
-                                            rows={1}
-                                            placeholder="Add a reflection note…"
-                                            value={note}
-                                            onChange={(e) => {
-                                              // Optimistic local update
-                                              setRoadmapMilestoneProgress(prev => {
-                                                const copy = [...prev];
-                                                if (copy[globalIdx]) copy[globalIdx] = { ...copy[globalIdx], note: e.target.value };
-                                                return copy;
-                                              });
-                                            }}
-                                            onBlur={(e) => {
-                                              void updateMilestone(globalIdx, prog?.status || "pending", e.target.value);
-                                            }}
-                                          />
-                                        )}
-                                        {prog && (
-                                          <span className={`milestone-status-badge ${prog.status}`}>
-                                            {prog.status === "in_progress" ? "In Progress" : prog.status === "completed" ? "Completed" : "Pending"}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
+                          {/* Skills to Master */}
+                          {Array.isArray(phase.skills) && phase.skills.length > 0 && (
+                            <div style={{ marginBottom: 12 }}>
+                              <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--muted-text)" }}>Key Competencies &amp; Technologies</strong>
+                              <div className="phase-skills-row" style={{ marginTop: 6 }}>
+                                {phase.skills.map((skill) => (
+                                  <span key={skill} className="phase-skill-pill">{skill}</span>
+                                ))}
                               </div>
                             </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          )}
 
-                {/* Additional Guidance & Certifications Grid */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 24 }}>
-                  {Array.isArray(roadmapData.recommendedCertifications) && roadmapData.recommendedCertifications.length > 0 && (
-                    <div className="studio-panel">
-                      <div className="studio-panel-heading">
-                        <div>
-                          <h3>Recommended Certifications</h3>
-                          <p>Recognized industry credentials that boost hiring probability.</p>
-                        </div>
-                        <ShieldCheck size={20} />
-                      </div>
-                      <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
-                        {roadmapData.recommendedCertifications.map((cert, cIdx) => (
-                          <li key={cIdx} style={{ fontSize: 13, margin: "6px 0", color: "var(--text-secondary)" }}>{cert}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                          {/* Recommended Projects */}
+                          {Array.isArray(phase.projects) && phase.projects.length > 0 && (
+                            <div style={{ marginBottom: 12, background: "rgba(0,0,0,0.02)", padding: "10px 14px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
+                              <strong style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-primary)" }}>Recommended Hands-on Projects:</strong>
+                              <ul style={{ margin: "6px 0 0 16px", padding: 0 }}>
+                                {phase.projects.map((proj, pIdx) => (
+                                  <li key={pIdx} style={{ fontSize: 13, margin: "4px 0", color: "var(--text-secondary)" }}>{proj}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
 
-                  {Array.isArray(roadmapData.actionableAdvice) && roadmapData.actionableAdvice.length > 0 && (
-                    <div className="studio-panel">
-                      <div className="studio-panel-heading">
-                        <div>
-                          <h3>Actionable Career Strategy</h3>
-                          <p>Practices to accelerate job landing and technical credibility.</p>
+                          {/* Interactive Milestone Tracker */}
+                          {Array.isArray(phase.milestones) && phase.milestones.length > 0 && (() => {
+                            // Compute global offset for milestones in this phase
+                            let offset = 0;
+                            for (let pi = 0; pi < i; pi++) {
+                              offset += (roadmapData.phases[pi]?.milestones?.length || 0);
+                            }
+                            return (
+                              <div>
+                                <p className="milestone-tracker-heading">Mastery Milestones</p>
+                                <div className="milestone-list">
+                                  {phase.milestones.map((milestone, mIdx) => {
+                                    const globalIdx = offset + mIdx;
+                                    const prog = roadmapMilestoneProgress[globalIdx];
+                                    const isDone = prog?.status === "completed";
+                                    const note = prog?.note || "";
+                                    const canTrack = roadmapSaveStatus === "saved";
+                                    return (
+                                      <div
+                                        key={mIdx}
+                                        className={`milestone-item${isDone ? " completed-milestone" : ""}`}
+                                      >
+                                        <button
+                                          className={`milestone-checkbox-btn${isDone ? " checked" : ""}`}
+                                          title={canTrack ? (isDone ? "Mark incomplete" : "Mark complete") : "Save roadmap first to track milestones"}
+                                          disabled={!canTrack}
+                                          onClick={() => canTrack && void updateMilestone(
+                                            globalIdx,
+                                            isDone ? "pending" : "completed",
+                                            note
+                                          )}
+                                        >
+                                          {isDone && <Check size={13} />}
+                                        </button>
+                                        <div className="milestone-body">
+                                          <p className="milestone-title">{milestone}</p>
+                                          {canTrack && (
+                                            <textarea
+                                              className="milestone-note-input"
+                                              rows={1}
+                                              placeholder="Add a reflection note…"
+                                              value={note}
+                                              onChange={(e) => {
+                                                // Optimistic local update
+                                                setRoadmapMilestoneProgress(prev => {
+                                                  const copy = [...prev];
+                                                  if (copy[globalIdx]) copy[globalIdx] = { ...copy[globalIdx], note: e.target.value };
+                                                  return copy;
+                                                });
+                                              }}
+                                              onBlur={(e) => {
+                                                void updateMilestone(globalIdx, prog?.status || "pending", e.target.value);
+                                              }}
+                                            />
+                                          )}
+                                          {prog && (
+                                            <span className={`milestone-status-badge ${prog.status}`}>
+                                              {prog.status === "in_progress" ? "In Progress" : prog.status === "completed" ? "Completed" : "Pending"}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                        <Sparkles size={20} />
                       </div>
-                      <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
-                        {roadmapData.actionableAdvice.map((tip, tIdx) => (
-                          <li key={tIdx} style={{ fontSize: 13, margin: "6px 0", color: "var(--text-secondary)" }}>{tip}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+
+                  {/* Additional Guidance & Certifications Grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 24 }}>
+                    {Array.isArray(roadmapData.recommendedCertifications) && roadmapData.recommendedCertifications.length > 0 && (
+                      <div className="studio-panel">
+                        <div className="studio-panel-heading">
+                          <div>
+                            <h3>Recommended Certifications</h3>
+                            <p>Recognized industry credentials that boost hiring probability.</p>
+                          </div>
+                          <ShieldCheck size={20} />
+                        </div>
+                        <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
+                          {roadmapData.recommendedCertifications.map((cert, cIdx) => (
+                            <li key={cIdx} style={{ fontSize: 13, margin: "6px 0", color: "var(--text-secondary)" }}>{cert}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {Array.isArray(roadmapData.actionableAdvice) && roadmapData.actionableAdvice.length > 0 && (
+                      <div className="studio-panel">
+                        <div className="studio-panel-heading">
+                          <div>
+                            <h3>Actionable Career Strategy</h3>
+                            <p>Practices to accelerate job landing and technical credibility.</p>
+                          </div>
+                          <Sparkles size={20} />
+                        </div>
+                        <ul style={{ margin: "8px 0 0 16px", padding: 0 }}>
+                          {roadmapData.actionableAdvice.map((tip, tIdx) => (
+                            <li key={tIdx} style={{ fontSize: 13, margin: "6px 0", color: "var(--text-secondary)" }}>{tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
               );
             })()}
 
