@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ANSWER_PAUSE_TIMEOUT_MS,
+  appendTranscriptSegment,
   canFinalizeVoiceAnswer,
   commitVoiceRecognitionResults,
   createVoiceAnswerCapture,
@@ -200,7 +201,7 @@ test("an unfinalized recognition fragment survives a browser restart without sub
   timers.advance(ANSWER_PAUSE_TIMEOUT_MS);
 });
 
-test("an interim transcript survives recognition ending and remains editable until finalized", () => {
+test("preserveVoiceRecognitionResults discards interim so it is never permanently committed", () => {
   const capture = createVoiceAnswerCapture(6);
   updateVoiceAnswerCapture(capture, {
     finalTranscript: "I designed the service.",
@@ -209,16 +210,19 @@ test("an interim transcript survives recognition ending and remains editable unt
 
   preserveVoiceRecognitionResults(capture);
 
-  assert.equal(
-    getVoiceAnswerTranscript(capture),
-    "I designed the service. I also handled",
-  );
+  // Interim text is transient preview only; must NOT appear in completedTranscript after preserve.
+  assert.equal(capture.completedTranscript, "I designed the service.");
+  assert.equal(capture.currentFinalTranscript, "");
+  assert.equal(capture.interimTranscript, "");
+  // awaitingFinalTranscript stays true because we had interim — the session expects a final result.
   assert.equal(capture.awaitingFinalTranscript, true);
   assert.equal(canFinalizeVoiceAnswer(capture), false);
 
+  // The next recognition session finalizes the complete sentence.
   updateVoiceAnswerCapture(capture, {
-    finalTranscript: "the migration plan.",
+    finalTranscript: "I designed the service. I also handled the migration plan.",
   });
+  // appendTranscriptSegment deduplicates the overlap with the already-committed prefix.
   assert.equal(
     getVoiceAnswerTranscript(capture, { includeInterim: false }),
     "I designed the service. I also handled the migration plan.",
@@ -293,3 +297,38 @@ test("failed backend submission retains the transcript and permits a deliberate 
   timers.advance(ANSWER_PAUSE_TIMEOUT_MS);
   assert.equal(requests, 2);
 });
+
+test("appendTranscriptSegment handles empty inputs gracefully", () => {
+  assert.equal(appendTranscriptSegment("", "Hello"), "Hello");
+  assert.equal(appendTranscriptSegment("Hello", ""), "Hello");
+  assert.equal(appendTranscriptSegment("", ""), "");
+});
+
+test("appendTranscriptSegment does not duplicate when addition equals base", () => {
+  assert.equal(appendTranscriptSegment("My name is Ali.", "My name is Ali."), "My name is Ali.");
+});
+
+test("appendTranscriptSegment deduplicates Android cumulative re-emission at word boundary", () => {
+  // Android Chrome re-emits the whole recognized phrase on each event.
+  // First event: "My name is"
+  // Second event: "My name is Muhammad" (re-emits "My name is" then adds "Muhammad")
+  const after1 = appendTranscriptSegment("My name is", "My name is Muhammad");
+  assert.equal(after1, "My name is Muhammad");
+
+  // Third event: re-emits full phrase and adds surname
+  const after2 = appendTranscriptSegment("My name is Muhammad", "My name is Muhammad Wasim Pasha");
+  assert.equal(after2, "My name is Muhammad Wasim Pasha");
+});
+
+test("appendTranscriptSegment preserves legitimate consecutive repeated words", () => {
+  // "very very" is intentional; dedup should not collapse it
+  const result = appendTranscriptSegment("It was", "very very good");
+  assert.equal(result, "It was very very good");
+});
+
+test("appendTranscriptSegment handles punctuation on overlapping words", () => {
+  // Final chunk ends with comma; re-emitted chunk starts without
+  const result = appendTranscriptSegment("I built a classifier,", "I built a classifier, then I tested it.");
+  assert.equal(result, "I built a classifier, then I tested it.");
+});
+

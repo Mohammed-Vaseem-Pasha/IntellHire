@@ -18,7 +18,9 @@ import {
 import { buildSpokenInterviewResponse } from "./lib/interviewResponse";
 import {
   createSpeechPlaybackGate,
+  getEnglishVoice,
   isCurrentAnswerResponse,
+  primeSpeechSynthesis,
   speakUtteranceOnce,
 } from "./lib/speechPlayback";
 import {
@@ -27,6 +29,7 @@ import {
   getVoiceRecoveryAction,
   MAX_AUTOMATIC_VOICE_RETRIES,
   canFinalizeVoiceAnswer,
+  commitVoiceRecognitionResults,
   createVoiceAnswerCapture,
   createVoiceAnswerPauseTimer,
   getAnswerPauseTimeout,
@@ -34,7 +37,6 @@ import {
   preserveVoiceRecognitionResults,
   releaseVoiceAnswerSubmission,
   shouldFinalizeRecognitionError,
-  updateVoiceAnswerCapture,
 } from "./lib/voiceRecovery";
 import {
   ArrowRight,
@@ -55,6 +57,7 @@ import {
   Sliders,
   Upload,
   User as UserIcon,
+  Volume2,
   X,
   ChartNoAxesCombined,
   AlertCircle,
@@ -355,6 +358,10 @@ export default function App() {
   const [historyReportError, setHistoryReportError] = useState("");
 
   const recognitionRef = useRef(null);
+  // Tracks whether the user is currently editing the answer textarea manually.
+  // When true, voice recognition updates do NOT overwrite what the user typed.
+  const userTypingRef = useRef(false);
+  const userTypingTimerRef = useRef(null);
   const submittingRef = useRef(false);
   const activeAnswerRequestRef = useRef(null);
   const submittedQuestionRef = useRef(null);
@@ -394,6 +401,14 @@ export default function App() {
     const value = String(answer ?? "");
     interviewAnswerRef.current = value;
     setInterviewAnswer(value);
+    // When a new question clears the answer, allow voice to resume updating the textarea.
+    if (!value) {
+      userTypingRef.current = false;
+      if (userTypingTimerRef.current) {
+        window.clearTimeout(userTypingTimerRef.current);
+        userTypingTimerRef.current = null;
+      }
+    }
   }
 
   useEffect(() => {
@@ -606,6 +621,13 @@ export default function App() {
   function changePage(nextPage, { replace = false } = {}) {
     const resolved = VALID_PAGES.has(nextPage) ? nextPage : (PAGE_ALIASES[nextPage] || "dashboard");
     setMobileMenu(false);
+    if (resolved !== "interview") {
+      try {
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+        }
+      } catch {}
+    }
     if (resolved === "feedback") void loadInterviewHistory(auth.currentUser);
 
     setPage((prev) => {
@@ -622,6 +644,14 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try {
+        window.speechSynthesis.getVoices();
+        const onVoices = () => { window.speechSynthesis.getVoices(); };
+        window.speechSynthesis.addEventListener?.("voiceschanged", onVoices, { once: true });
+      } catch {}
+    }
+
     const initialPage = getPageFromUrl();
     const hasHash = !!window.location.hash;
     const targetUrl = hasHash
@@ -635,6 +665,13 @@ export default function App() {
     const handlePopState = (event) => {
       const targetPage = event.state?.page || getPageFromUrl();
       const resolved = VALID_PAGES.has(targetPage) ? targetPage : (PAGE_ALIASES[targetPage] || "dashboard");
+      if (resolved !== "interview") {
+        try {
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+          }
+        } catch {}
+      }
       setPage(resolved);
       setMobileMenu(false);
       if (resolved === "feedback") {
@@ -937,6 +974,7 @@ export default function App() {
       updateStatus = true,
       responseId,
       trigger = "unspecified",
+      force = false,
     } = {}
   ) {
     console.log("[SPEECH DEBUG]", {
@@ -944,11 +982,12 @@ export default function App() {
       questionIndex,
       responseId,
       trigger,
+      force,
       time: performance.now(),
     });
     if (!text) return;
 
-    const didStartPlayback = speechPlaybackGateRef.current.claim(responseId);
+    const didStartPlayback = speechPlaybackGateRef.current.claim(responseId, { force });
     if (!didStartPlayback) {
       if (import.meta.env.DEV) {
         console.debug("[Interview speech] duplicate trigger suppressed", { responseId, trigger });
@@ -980,6 +1019,7 @@ export default function App() {
       window.clearTimeout(staleRequest.startTimer);
       speechRequestRef.current = null;
       speechUtteranceRef.current = null;
+      window._activeInterviewUtterance = null;
       synthesis.cancel();
     }
 
@@ -996,30 +1036,21 @@ export default function App() {
       }
 
       const voices = synthesis.getVoices();
-      const englishVoices = voices.filter((voice) =>
-        /^en([_-]|$)/i.test(voice.lang)
-      );
-      const selectedVoice =
-        englishVoices.find((voice) => voice.default) ||
-        englishVoices.find((voice) => /^en[-_]US$/i.test(voice.lang)) ||
-        englishVoices[0];
+      const selectedVoice = getEnglishVoice(voices);
       const utterance = new SpeechSynthesisUtterance(text);
       request.utterance = utterance;
       speechUtteranceRef.current = utterance;
+      window._activeInterviewUtterance = utterance;
       utterance.lang = selectedVoice?.lang || "en-US";
       utterance.rate = 0.95;
       utterance.volume = 1;
       if (selectedVoice) utterance.voice = selectedVoice;
 
       utterance.onstart = () => {
-        if (
-          speechRequestRef.current === request &&
-          mountedRef.current &&
-          updateStatus &&
-          questionIndex === interviewQuestionIndexRef.current
-        ) {
-          window.clearTimeout(request.startTimer);
-          request.startTimer = null;
+        if (speechRequestRef.current !== request || !mountedRef.current) return;
+        window.clearTimeout(request.startTimer);
+        request.startTimer = null;
+        if (updateStatus && questionIndex === interviewQuestionIndexRef.current) {
           setInterviewError("");
           setInterviewPhase("asking", questionIndex);
         }
@@ -1031,6 +1062,7 @@ export default function App() {
         speechRequestRef.current = null;
         request.cleanup?.();
         speechUtteranceRef.current = null;
+        window._activeInterviewUtterance = null;
         if (!mountedRef.current) return;
 
         if (
@@ -1050,10 +1082,12 @@ export default function App() {
         speechRequestRef.current = null;
         request.cleanup?.();
         speechUtteranceRef.current = null;
+        window._activeInterviewUtterance = null;
         autoInterviewRef.current = false;
+        speechPlaybackGateRef.current.release(responseId);
         if (updateStatus) setInterviewStatus("voice-error");
         setInterviewError(
-          `Browser speech playback failed (${event.error || "unknown error"}). Read the visible question and type your answer to continue.`
+          `Browser speech playback failed (${event.error || "unknown error"}). Tap “Play Question” or read the visible question and type your answer.`
         );
         finishCallback();
       };
@@ -1077,24 +1111,28 @@ export default function App() {
           speechRequestRef.current = null;
           request.cleanup?.();
           speechUtteranceRef.current = null;
+          window._activeInterviewUtterance = null;
           autoInterviewRef.current = false;
           synthesis.cancel();
+          speechPlaybackGateRef.current.release(responseId);
           setInterviewStatus("voice-error");
           setInterviewError(
-            "The browser did not start speech playback. Read the visible question and type your answer to continue."
+            "The browser did not start speech playback. Tap “Play Question” or read the visible question and type your answer to continue."
           );
           finishCallback();
-        }, 8000);
+        }, 7000);
       } catch (error) {
         if (speechRequestRef.current === request) {
           window.clearTimeout(request.startTimer);
           speechRequestRef.current = null;
           request.cleanup?.();
           speechUtteranceRef.current = null;
+          window._activeInterviewUtterance = null;
           autoInterviewRef.current = false;
+          speechPlaybackGateRef.current.release(responseId);
           if (updateStatus) setInterviewStatus("voice-error");
           setInterviewError(
-            `Browser could not start speech playback: ${error.message || "unknown error"}. Read the visible question and type your answer to continue.`
+            `Browser could not start speech playback: ${error.message || "unknown error"}. Tap “Play Question” or read the visible question and type your answer.`
           );
           finishCallback();
         }
@@ -1128,7 +1166,7 @@ export default function App() {
       }
       window.clearTimeout(voiceLookupTimer);
     };
-    voiceLookupTimer = window.setTimeout(finishVoiceLookup, 1200);
+    voiceLookupTimer = window.setTimeout(finishVoiceLookup, 200);
     if (typeof synthesis.addEventListener === "function") {
       synthesis.addEventListener("voiceschanged", finishVoiceLookup, { once: true });
       if (synthesis.getVoices().length > 0) finishVoiceLookup();
@@ -1137,7 +1175,31 @@ export default function App() {
     }
   }
 
+  function playCurrentQuestion(force = true) {
+    if (!interviewQuestion) return;
+    primeSpeechSynthesis();
+    setInterviewError("");
+    const qIndex = interviewQuestionIndexRef.current ?? interviewQuestionIndex ?? 0;
+    const sId = interviewSessionIdRef.current || interviewSessionId;
+    const manualResponseId = `${sId}:question:${qIndex}:manual:${Date.now()}`;
+
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }
+
+    autoInterviewRef.current = true;
+    speakInterviewText(interviewQuestion, {
+      questionIndex: qIndex,
+      responseId: manualResponseId,
+      trigger: "manual-play",
+      force,
+      updateStatus: true,
+      autoListen: true,
+    });
+  }
+
   function showInterviewStartGuidance() {
+    primeSpeechSynthesis();
     if (!interviewResumeFile) {
       setInterviewError("Please upload a PDF resume to start your interview.");
       return;
@@ -1147,6 +1209,7 @@ export default function App() {
   }
 
   async function startInterview() {
+    primeSpeechSynthesis();
     if (interviewBusy || interviewSessionId) return;
 
     setInterviewError("");
@@ -1311,6 +1374,7 @@ export default function App() {
   }
 
   async function submitInterviewAnswer(answerOverride, questionIndex = interviewQuestionIndex, { isSkip = false } = {}) {
+    primeSpeechSynthesis();
     let answer = String(
       answerOverride === undefined ? interviewAnswerRef.current : answerOverride
     ).trim();
@@ -1830,6 +1894,12 @@ export default function App() {
         resetNoSpeechTimer();
       };
 
+      // Track the index of the last result we have already committed as final,
+      // so each onresult event only processes genuinely new final segments.
+      // This prevents Android Chrome's cumulative event.results from causing
+      // word duplication (it re-emits previous final chunks on every event).
+      let lastCommittedFinalIndex = -1;
+
       recognition.onresult = (event) => {
         if (
           recognitionRef.current !== recognition ||
@@ -1837,20 +1907,45 @@ export default function App() {
           interviewPhaseRef.current !== "listening" ||
           questionIndex !== interviewQuestionIndexRef.current
         ) return;
-        const results = Array.from(event.results);
-        const finalTranscript = results
-          .filter((result) => result.isFinal)
-          .map((result) => result[0]?.transcript || "")
-          .join(" ")
-          .trim();
-        const interimTranscript = results
-          .filter((result) => !result.isFinal)
-          .map((result) => result[0]?.transcript || "")
-          .join(" ")
-          .trim();
-        updateVoiceAnswerCapture(capture, { finalTranscript, interimTranscript });
+
+        // Process only results at or after event.resultIndex (new results for this event).
+        // event.resultIndex is the index of the first result that changed.
+        const startIndex = Math.max(event.resultIndex, lastCommittedFinalIndex + 1);
+
+        let interimTranscript = "";
+        let hadNewFinal = false;
+        for (let i = startIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            const text = (result[0]?.transcript || "").trim();
+            if (text) {
+              // Commit this final chunk immediately using appendTranscriptSegment
+              // (deduplicates overlapping words from Android re-emissions).
+              commitVoiceRecognitionResults(
+                Object.assign(capture, { currentFinalTranscript: text })
+              );
+            }
+            lastCommittedFinalIndex = i;
+            hadNewFinal = true;
+          } else {
+            interimTranscript = (result[0]?.transcript || "").trim();
+          }
+        }
+
+        // Update interim preview (transient only, never committed to completedTranscript).
+        capture.interimTranscript = interimTranscript;
+        if (interimTranscript) {
+          capture.awaitingFinalTranscript = true;
+        } else if (hadNewFinal) {
+          // A final result resolved the outstanding interim — no longer waiting.
+          capture.awaitingFinalTranscript = false;
+        }
+
         resetNoSpeechTimer();
-        updateInterviewAnswer(getVoiceAnswerTranscript(capture));
+        // Only update the textarea if the user has NOT typed manually.
+        if (!userTypingRef.current) {
+          updateInterviewAnswer(getVoiceAnswerTranscript(capture));
+        }
         if (canFinalizeVoiceAnswer(capture)) {
           answerPauseTimerRef.current?.reset(capture);
         } else {
@@ -1966,10 +2061,15 @@ export default function App() {
           answerPauseTimerRef.current?.reset(capture);
           setInterviewPhase("listening", questionIndex);
           if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
+          // On mobile, the OS VAD ends the session on every brief pause (~1s silence).
+          // Use a longer restart delay to avoid rapid mic hardware on/off cycling that
+          // shows up as a flashing microphone indicator. Desktop keeps 250ms.
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const restartDelay = isMobile ? 1500 : 250;
           retryTimerRef.current = window.setTimeout(() => {
             retryTimerRef.current = null;
             startVoiceAnswer(questionIndex);
-          }, 250);
+          }, restartDelay);
         } else if (recoveryAction === "retry") {
           retryVoiceAnswer(questionIndex);
         } else {
@@ -2842,6 +2942,39 @@ export default function App() {
                   <div className="question-text-box">
                     {interviewQuestion || "Preparing your next question..."}
                   </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "6px 14px",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        borderRadius: 8,
+                      }}
+                      onClick={() => playCurrentQuestion(true)}
+                      disabled={interviewBusy || interviewStatus === "asking"}
+                      title="Play question speech"
+                    >
+                      <Volume2 size={16} />
+                      {interviewStatus === "asking" ? "Interviewer Speaking…" : "Play Question"}
+                    </button>
+                    {interviewStatus === "asking" && (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "6px 12px", fontSize: 12, borderRadius: 8 }}
+                        onClick={() => stopInterviewSpeech()}
+                        title="Silence question voice"
+                      >
+                        Stop Audio
+                      </button>
+                    )}
+                  </div>
                   {interviewResumeProfile && (
                     <div className="alert-notice" style={{ marginTop: 12 }}>
                       <FileText size={16} />
@@ -2886,17 +3019,29 @@ export default function App() {
                                         ? "Voice input needs attention. You can type your answer."
                                         : "Preparing the next step..."}
                     </strong>
-                    {interviewStatus === "voice-error" &&
-                      (window.SpeechRecognition || window.webkitSpeechRecognition) && (
+                    {interviewStatus === "voice-error" && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button
                           type="button"
-                          className="btn-secondary"
-                          onClick={() => void retryMicrophoneAccess(interviewQuestionIndexRef.current)}
-                          disabled={interviewBusy}
+                          className="btn-primary"
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", fontSize: 13 }}
+                          onClick={() => playCurrentQuestion(true)}
+                          disabled={interviewBusy || interviewStatus === "asking"}
                         >
-                          Retry Microphone
+                          <Volume2 size={15} /> Play Question
                         </button>
-                      )}
+                        {(window.SpeechRecognition || window.webkitSpeechRecognition) && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => void retryMicrophoneAccess(interviewQuestionIndexRef.current)}
+                            disabled={interviewBusy}
+                          >
+                            Retry Microphone
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <button type="button" className="btn-secondary" onClick={() => void endInterview()} disabled={interviewBusy}>
                       End Interview
                     </button>
@@ -2909,7 +3054,17 @@ export default function App() {
                     rows={5}
                     value={interviewAnswer}
                     disabled={interviewBusy}
-                    onChange={(event) => updateInterviewAnswer(event.target.value)}
+                    onChange={(event) => {
+                      updateInterviewAnswer(event.target.value);
+                      // Mark that the user is actively typing so voice recognition
+                      // doesn't overwrite their edits.
+                      userTypingRef.current = true;
+                      if (userTypingTimerRef.current) window.clearTimeout(userTypingTimerRef.current);
+                      userTypingTimerRef.current = window.setTimeout(() => {
+                        userTypingTimerRef.current = null;
+                        userTypingRef.current = false;
+                      }, 3000);
+                    }}
                     placeholder="Speak your answer or type here if microphone input is unavailable."
                     aria-live="polite"
                   />
@@ -3796,6 +3951,7 @@ export default function App() {
               type="button"
               className="btn-primary interview-guidance-start"
               onClick={() => {
+                primeSpeechSynthesis();
                 setShowInterviewGuidance(false);
                 void startInterview();
               }}

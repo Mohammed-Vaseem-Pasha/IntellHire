@@ -3,7 +3,9 @@ import test from "node:test";
 import { buildSpokenInterviewResponse } from "./interviewResponse.js";
 import {
   createSpeechPlaybackGate,
+  getEnglishVoice,
   isCurrentAnswerResponse,
+  primeSpeechSynthesis,
   speakUtteranceOnce,
 } from "./speechPlayback.js";
 
@@ -137,4 +139,43 @@ test("late answer responses cannot apply after the session, turn, or submission 
     isCurrentAnswerResponse({ ...response, activeSubmissionId: "submission-3" }),
     false,
   );
+});
+
+test("playback gate allows forced replay when force option is true", () => {
+  const playbackGate = createSpeechPlaybackGate();
+  assert.equal(playbackGate.claim("session-1:question:0"), true);
+  assert.equal(playbackGate.claim("session-1:question:0"), false);
+  assert.equal(playbackGate.claim("session-1:question:0", { force: true }), true);
+});
+
+test("playback gate release allows a failed response to be retried", () => {
+  const playbackGate = createSpeechPlaybackGate();
+  assert.equal(playbackGate.claim("session-1:question:0"), true);
+  assert.equal(playbackGate.claim("session-1:question:0"), false);
+  playbackGate.release("session-1:question:0");
+  assert.equal(playbackGate.claim("session-1:question:0"), true);
+});
+
+test("getEnglishVoice prefers default English voice or en-US", () => {
+  const voices = [
+    { name: "Spanish", lang: "es-ES" },
+    { name: "UK English", lang: "en-GB" },
+    { name: "US English Default", lang: "en-US", default: true },
+  ];
+  const selected = getEnglishVoice(voices);
+  assert.equal(selected.name, "US English Default");
+
+  const voicesNoDefault = [
+    { name: "UK English", lang: "en-GB" },
+    { name: "US English", lang: "en-US" },
+  ];
+  const selectedNoDefault = getEnglishVoice(voicesNoDefault);
+  assert.equal(selectedNoDefault.name, "US English");
+
+  assert.equal(getEnglishVoice([]), null);
+  assert.equal(getEnglishVoice(null), null);
+});
+
+test("primeSpeechSynthesis returns false safely when window is not present", () => {
+  assert.equal(primeSpeechSynthesis(), false);
 });
