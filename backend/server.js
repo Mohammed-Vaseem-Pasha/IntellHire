@@ -115,6 +115,7 @@ function getInterviewStartErrorStatus(error, phase) {
 const allowedOrigins = [
     "http://localhost:5173",
     "http://localhost:5174",
+    "https://mohammed-vaseem-pasha.github.io",
 ];
 
 app.use(
@@ -2024,28 +2025,28 @@ app.post("/api/interview/:sessionId/answer", async (req, res) => {
         }
 
         const isQuotaError =
-    error.code === "GROQ_QUOTA_EXCEEDED" ||
-    error.status === 429 ||
-    error.statusCode === 429;
+            error.code === "GROQ_QUOTA_EXCEEDED" ||
+            error.status === 429 ||
+            error.statusCode === 429;
 
-const responseMessage = isQuotaError
-    ? "AI evaluation has reached its usage limit. Your answer is preserved; please try again later."
-    : phase === "answer evaluation"
-        ? "The answer evaluation service is temporarily unavailable. Your answer is preserved; retry submission without speaking it again."
-        : phase === "evaluation checkpoint save"
-            ? "Your evaluation is ready but could not yet be saved. Your answer is preserved; retry submission to save it without another evaluation."
-            : phase === "next interviewer response generation"
-                ? "Your answer evaluation is saved, but the next question could not be prepared. Retry submission to continue without repeating the evaluation."
-                : phase === "interview session save"
-                    ? "Your answer evaluation is saved, but this interview turn could not be finalized. Retry submission to continue without repeating the evaluation."
-                    : "The interview could not save this turn. Your answer is preserved; please retry submission.";
+        const responseMessage = isQuotaError
+            ? "AI evaluation has reached its usage limit. Your answer is preserved; please try again later."
+            : phase === "answer evaluation"
+                ? "The answer evaluation service is temporarily unavailable. Your answer is preserved; retry submission without speaking it again."
+                : phase === "evaluation checkpoint save"
+                    ? "Your evaluation is ready but could not yet be saved. Your answer is preserved; retry submission to save it without another evaluation."
+                    : phase === "next interviewer response generation"
+                        ? "Your answer evaluation is saved, but the next question could not be prepared. Retry submission to continue without repeating the evaluation."
+                        : phase === "interview session save"
+                            ? "Your answer evaluation is saved, but this interview turn could not be finalized. Retry submission to continue without repeating the evaluation."
+                            : "The interview could not save this turn. Your answer is preserved; please retry submission.";
 
-const responseStatus = isQuotaError
-    ? 503
-    : phase === "next interviewer response generation" ||
-        phase === "answer evaluation"
-        ? 502
-        : 500;
+        const responseStatus = isQuotaError
+            ? 503
+            : phase === "next interviewer response generation" ||
+                phase === "answer evaluation"
+                ? 502
+                : 500;
         return res.status(responseStatus).json({
             success: false,
             message: responseMessage,
