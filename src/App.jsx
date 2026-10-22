@@ -169,13 +169,57 @@ function ErrorMessage({ children }) {
   );
 }
 
+const VALID_PAGES = new Set(["dashboard", "resume", "interview", "feedback", "roadmap", "settings"]);
+
+const PAGE_ALIASES = {
+  overview: "dashboard",
+  "resume-analysis": "resume",
+  "ai-interview": "interview",
+  "interview-history": "feedback",
+  "career-roadmap": "roadmap",
+  profile: "settings",
+};
+
+function getPageFromUrl() {
+  if (typeof window === "undefined") return "dashboard";
+
+  // Check URL hash first (e.g. #resume, #/resume)
+  const rawHash = window.location.hash.replace(/^#\/?/, "").toLowerCase().trim();
+  if (rawHash) {
+    if (VALID_PAGES.has(rawHash)) return rawHash;
+    if (PAGE_ALIASES[rawHash]) return PAGE_ALIASES[rawHash];
+  }
+
+  // Check search query parameter (e.g. ?page=resume)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get("page")?.toLowerCase()?.trim();
+    if (pageParam) {
+      if (VALID_PAGES.has(pageParam)) return pageParam;
+      if (PAGE_ALIASES[pageParam]) return PAGE_ALIASES[pageParam];
+    }
+  } catch {}
+
+  // Check pathname ending segment (e.g. /resume or /IntellHire/resume)
+  try {
+    const pathname = window.location.pathname.replace(/\/+$/, "");
+    const lastSegment = pathname.split("/").pop()?.toLowerCase()?.trim();
+    if (lastSegment) {
+      if (VALID_PAGES.has(lastSegment)) return lastSegment;
+      if (PAGE_ALIASES[lastSegment]) return PAGE_ALIASES[lastSegment];
+    }
+  } catch {}
+
+  return "dashboard";
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [wallet, setWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [error, setError] = useState("");
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(() => getPageFromUrl());
   const [mobileMenu, setMobileMenu] = useState(false);
   const [landingMobileNav, setLandingMobileNav] = useState(false);
 
@@ -559,6 +603,51 @@ export default function App() {
     }
   }
 
+  function changePage(nextPage, { replace = false } = {}) {
+    const resolved = VALID_PAGES.has(nextPage) ? nextPage : (PAGE_ALIASES[nextPage] || "dashboard");
+    setMobileMenu(false);
+    if (resolved === "feedback") void loadInterviewHistory(auth.currentUser);
+
+    setPage((prev) => {
+      if (prev === resolved && !replace) return prev;
+      const targetHash = `#${resolved}`;
+      const stateObj = { page: resolved };
+      if (replace) {
+        window.history.replaceState(stateObj, "", targetHash);
+      } else {
+        window.history.pushState(stateObj, "", targetHash);
+      }
+      return resolved;
+    });
+  }
+
+  useEffect(() => {
+    const initialPage = getPageFromUrl();
+    const hasHash = !!window.location.hash;
+    const targetUrl = hasHash
+      ? window.location.hash
+      : (initialPage !== "dashboard" ? `#${initialPage}` : window.location.pathname + window.location.search);
+
+    if (!window.history.state || window.history.state.page !== initialPage) {
+      window.history.replaceState({ page: initialPage }, "", targetUrl);
+    }
+
+    const handlePopState = (event) => {
+      const targetPage = event.state?.page || getPageFromUrl();
+      const resolved = VALID_PAGES.has(targetPage) ? targetPage : (PAGE_ALIASES[targetPage] || "dashboard");
+      setPage(resolved);
+      setMobileMenu(false);
+      if (resolved === "feedback") {
+        void loadInterviewHistory(auth.currentUser);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
   async function retryHistoricalReport(sessionId) {
     if (!sessionId || historyReportBusyRef.current.has(sessionId)) return;
     historyReportBusyRef.current.add(sessionId);
@@ -632,7 +721,7 @@ export default function App() {
     stopInterviewSpeech();
     try {
       await signOut(auth);
-      setPage("dashboard");
+      changePage("dashboard", { replace: true });
       setWallet(null);
       setError("");
       resetInterview();
@@ -2226,12 +2315,6 @@ export default function App() {
   const currentAgent = agents.find((agent) => agent.id === page);
   const firstName = user.displayName?.split(" ")[0] || "Candidate";
 
-  function changePage(nextPage) {
-    setPage(nextPage);
-    setMobileMenu(false);
-    if (nextPage === "feedback") void loadInterviewHistory(auth.currentUser);
-  }
-
   return (
     <div className="glass-app-root">
       <GlassBackground />
@@ -3025,7 +3108,7 @@ export default function App() {
                     <p>The server marked the session complete but did not return a report object.</p>
                   )}
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 20 }}>
-                    <button type="button" className="btn-primary" onClick={() => { resetInterview(); setPage("interview"); }}>
+                    <button type="button" className="btn-primary" onClick={() => { resetInterview(); changePage("interview"); }}>
                       <RotateCcw size={15} /> Start New Interview
                     </button>
                     <button type="button" className="btn-secondary" onClick={() => changePage("feedback")}>Open Feedback Agent</button>
