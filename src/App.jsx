@@ -288,7 +288,7 @@ export default function App() {
   const [resumeRecordsError, setResumeRecordsError] = useState("");
 
   // Career Roadmap Agent state
-  const [roadmapRole, setRoadmapRole] = useState("Frontend Developer");
+  const [roadmapRole, setRoadmapRole] = useState("");
   const [roadmapExperienceLevel, setRoadmapExperienceLevel] = useState("Entry Level");
   const [roadmapCurrentSkills, setRoadmapCurrentSkills] = useState("");
   const [roadmapData, setRoadmapData] = useState(null);
@@ -426,6 +426,11 @@ export default function App() {
       if (!currentUser) {
         setLoading(false);
         setWalletLoading(false);
+        setRoadmapData(null);
+        setRoadmapRole("");
+        setRoadmapMilestoneProgress([]);
+        setRoadmapSavedId(null);
+        setRoadmapSaveStatus("idle");
         return;
       }
 
@@ -531,11 +536,17 @@ export default function App() {
       const data = await res.json();
       if (res.ok && data.success && data.record) {
         setRoadmapData(data.record.roadmap);
-        setRoadmapRole(data.record.targetRole || "Frontend Developer");
+        setRoadmapRole(data.record.targetRole || "");
         setRoadmapExperienceLevel(data.record.experienceLevel || "Entry Level");
         setRoadmapMilestoneProgress(Array.isArray(data.record.milestoneProgress) ? data.record.milestoneProgress : []);
         setRoadmapSavedId(data.record._id);
         setRoadmapSaveStatus("saved");
+      } else {
+        setRoadmapData(null);
+        setRoadmapRole("");
+        setRoadmapMilestoneProgress([]);
+        setRoadmapSavedId(null);
+        setRoadmapSaveStatus("idle");
       }
     } catch (err) {
       console.error("Load saved roadmap error:", err);
@@ -762,6 +773,11 @@ export default function App() {
       setWallet(null);
       setError("");
       resetInterview();
+      setRoadmapData(null);
+      setRoadmapRole("");
+      setRoadmapSavedId(null);
+      setRoadmapSaveStatus("idle");
+      setRoadmapMilestoneProgress([]);
     } catch (err) {
       console.error("Logout error:", err);
       setError("Unable to sign out. Please try again.");
@@ -3829,9 +3845,9 @@ export default function App() {
                   className="btn-primary"
                   type="button"
                   onClick={() => void generateRoadmap()}
-                  disabled={roadmapLoading}
+                  disabled={roadmapLoading || !roadmapRole.trim()}
                 >
-                  Generate {roadmapRole} Roadmap <ArrowRight size={14} />
+                  Generate {roadmapRole ? `${roadmapRole} ` : ""}Roadmap <ArrowRight size={14} />
                 </button>
               </div>
             )}
