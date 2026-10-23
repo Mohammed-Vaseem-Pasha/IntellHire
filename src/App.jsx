@@ -386,9 +386,24 @@ export default function App() {
     speechPlaybackGateRef.current = createSpeechPlaybackGate();
   }
   const microphonePermissionRef = useRef(false);
+  const activeMediaStreamRef = useRef(null);
+  const lastSpokenTextRef = useRef("");
   const mountedRef = useRef(true);
   const historyRequestRef = useRef(0);
   const historyReportBusyRef = useRef(new Set());
+
+  function stopMediaStream(stream) {
+    if (!stream) return;
+    try {
+      const tracks = typeof stream.getTracks === "function" ? stream.getTracks() : [];
+      tracks.forEach((track) => {
+        try {
+          track.enabled = false;
+          track.stop();
+        } catch {}
+      });
+    } catch {}
+  }
 
   function setInterviewPhase(phase, questionIndex = interviewQuestionIndexRef.current) {
     if (questionIndex !== interviewQuestionIndexRef.current) return false;
@@ -464,8 +479,7 @@ export default function App() {
     return () => {
       mountedRef.current = false;
       unsubscribe();
-      window.speechSynthesis?.cancel();
-      recognitionRef.current?.abort?.();
+      stopInterviewSpeech();
     };
   }, []);
 
@@ -633,11 +647,7 @@ export default function App() {
     const resolved = VALID_PAGES.has(nextPage) ? nextPage : (PAGE_ALIASES[nextPage] || "dashboard");
     setMobileMenu(false);
     if (resolved !== "interview") {
-      try {
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {}
+      stopInterviewSpeech();
     }
     if (resolved === "feedback") void loadInterviewHistory(auth.currentUser);
 
@@ -677,11 +687,7 @@ export default function App() {
       const targetPage = event.state?.page || getPageFromUrl();
       const resolved = VALID_PAGES.has(targetPage) ? targetPage : (PAGE_ALIASES[targetPage] || "dashboard");
       if (resolved !== "interview") {
-        try {
-          if (typeof window !== "undefined" && "speechSynthesis" in window) {
-            window.speechSynthesis.cancel();
-          }
-        } catch {}
+        stopInterviewSpeech();
       }
       setPage(resolved);
       setMobileMenu(false);
@@ -837,7 +843,7 @@ export default function App() {
     setAnalysisError("");
   }
 
-  function stopInterviewSpeech({ preserveAnswerCapture = false } = {}) {
+  function stopMicrophoneCapture({ preserveAnswerCapture = true } = {}) {
     if (retryTimerRef.current) {
       window.clearTimeout(retryTimerRef.current);
       retryTimerRef.current = null;
@@ -864,17 +870,15 @@ export default function App() {
       recognitionSessionTimerRef.current = null;
     }
     answerPauseTimerRef.current?.clear();
-    answerPauseTimerRef.current = null;
     if (!preserveAnswerCapture) voiceAnswerCaptureRef.current = null;
-    if (speechRequestRef.current) {
-      speechRequestRef.current.cancelled = true;
-      speechRequestRef.current.cleanup?.();
-      speechRequestRef.current = null;
-    }
-    speechUtteranceRef.current = null;
+
+    stopMediaStream(activeMediaStreamRef.current);
+    activeMediaStreamRef.current = null;
+
     const activeRecognition = recognitionRef.current;
     recognitionRef.current = null;
     if (activeRecognition) {
+      activeRecognition.onstart = null;
       activeRecognition.onresult = null;
       activeRecognition.onerror = null;
       activeRecognition.onend = null;
@@ -885,6 +889,16 @@ export default function App() {
       }
     }
     recoveryInProgressRef.current = false;
+  }
+
+  function stopInterviewSpeech({ preserveAnswerCapture = false } = {}) {
+    stopMicrophoneCapture({ preserveAnswerCapture });
+    if (speechRequestRef.current) {
+      speechRequestRef.current.cancelled = true;
+      speechRequestRef.current.cleanup?.();
+      speechRequestRef.current = null;
+    }
+    speechUtteranceRef.current = null;
     try {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
@@ -1003,6 +1017,11 @@ export default function App() {
     });
     if (!text) return;
 
+    // Genuinely stop microphone capture while interviewer speaks to prevent acoustic echo,
+    // microphone feedback loops, and audio ducking issues on mobile devices.
+    stopMicrophoneCapture({ preserveAnswerCapture: true });
+    lastSpokenTextRef.current = String(text || "").trim().toLowerCase();
+
     const didStartPlayback = speechPlaybackGateRef.current.claim(responseId, { force });
     if (!didStartPlayback) {
       if (import.meta.env.DEV) {
@@ -1087,7 +1106,24 @@ export default function App() {
           autoInterviewRef.current &&
           questionIndex === interviewQuestionIndexRef.current
         ) {
-          startVoiceAnswer(questionIndex);
+          // On mobile Android devices, the hardware speaker audio pipeline has a 300-500ms
+          // latency buffer before physical playback completes. Starting microphone capture
+          // synchronously causes the mic to capture the tail of the speaker audio (echo),
+          // and causes an audio focus collision (pop/beep). Add a safety delay for Android.
+          const isAndroid = /Android/i.test(navigator.userAgent);
+          const startDelay = isAndroid ? 400 : 50;
+          window.setTimeout(() => {
+            if (
+              !mountedRef.current ||
+              submittingRef.current ||
+              !autoInterviewRef.current ||
+              questionIndex !== interviewQuestionIndexRef.current ||
+              interviewPhaseRef.current === "submitting" ||
+              interviewPhaseRef.current === "evaluating" ||
+              interviewPhaseRef.current === "completed"
+            ) return;
+            startVoiceAnswer(questionIndex);
+          }, startDelay);
         }
         finishCallback();
       };
@@ -1282,8 +1318,17 @@ export default function App() {
         if (!navigator.mediaDevices?.getUserMedia) {
           throw new Error("This browser does not expose microphone access.");
         }
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((track) => track.stop());
+        const audioConstraints = {
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+        activeMediaStreamRef.current = stream;
+        stopMediaStream(stream);
+        activeMediaStreamRef.current = null;
         microphonePermissionRef.current = true;
       } catch (microphoneError) {
         microphonePermissionRef.current = false;
@@ -1776,6 +1821,7 @@ export default function App() {
       if (interviewPhaseRef.current === "listening") return;
       const staleRecognition = recognitionRef.current;
       recognitionRef.current = null;
+      staleRecognition.onstart = null;
       staleRecognition.onresult = null;
       staleRecognition.onerror = null;
       staleRecognition.onend = null;
@@ -1787,6 +1833,7 @@ export default function App() {
     }
     if (submittingRef.current || recoveryInProgressRef.current) return;
     if (
+      interviewPhaseRef.current === "asking" ||
       window.speechSynthesis?.speaking ||
       window.speechSynthesis?.pending ||
       speechRequestRef.current ||
@@ -1892,6 +1939,14 @@ export default function App() {
 
       recognition.onstart = () => {
         if (recognitionRef.current !== recognition || !autoInterviewRef.current) return;
+        if (
+          window.speechSynthesis?.speaking ||
+          speechRequestRef.current ||
+          interviewPhaseRef.current === "asking"
+        ) {
+          stopRecognitionSafely("aborted");
+          return;
+        }
         if (recognitionStartTimerRef.current) {
           window.clearTimeout(recognitionStartTimerRef.current);
           recognitionStartTimerRef.current = null;
@@ -1921,8 +1976,18 @@ export default function App() {
           recognitionRef.current !== recognition ||
           !autoInterviewRef.current ||
           interviewPhaseRef.current !== "listening" ||
-          questionIndex !== interviewQuestionIndexRef.current
+          questionIndex !== interviewQuestionIndexRef.current ||
+          window.speechSynthesis?.speaking ||
+          window.speechSynthesis?.pending
         ) return;
+
+        const lastSpoken = lastSpokenTextRef.current;
+        const isEcho = (phrase) => {
+          if (!lastSpoken || !phrase || phrase.length < 5) return false;
+          const cleanPhrase = phrase.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+          const cleanLast = lastSpoken.replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+          return cleanLast.includes(cleanPhrase) && cleanPhrase.length >= 12;
+        };
 
         // Process only results at or after event.resultIndex (new results for this event).
         // event.resultIndex is the index of the first result that changed.
@@ -1934,17 +1999,22 @@ export default function App() {
           const result = event.results[i];
           if (result.isFinal) {
             const text = (result[0]?.transcript || "").trim();
-            if (text) {
+            if (text && !isEcho(text)) {
               // Commit this final chunk immediately using appendTranscriptSegment
               // (deduplicates overlapping words from Android re-emissions).
               commitVoiceRecognitionResults(
                 Object.assign(capture, { currentFinalTranscript: text })
               );
+              lastCommittedFinalIndex = i;
+              hadNewFinal = true;
+            } else if (text && isEcho(text)) {
+              lastCommittedFinalIndex = i;
             }
-            lastCommittedFinalIndex = i;
-            hadNewFinal = true;
           } else {
-            interimTranscript = (result[0]?.transcript || "").trim();
+            const interim = (result[0]?.transcript || "").trim();
+            if (!isEcho(interim)) {
+              interimTranscript = interim;
+            }
           }
         }
 
@@ -2077,15 +2147,19 @@ export default function App() {
           answerPauseTimerRef.current?.reset(capture);
           setInterviewPhase("listening", questionIndex);
           if (retryTimerRef.current) window.clearTimeout(retryTimerRef.current);
-          // On mobile, the OS VAD ends the session on every brief pause (~1s silence).
-          // Use a longer restart delay to avoid rapid mic hardware on/off cycling that
-          // shows up as a flashing microphone indicator. Desktop keeps 250ms.
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          const restartDelay = isMobile ? 1500 : 250;
-          retryTimerRef.current = window.setTimeout(() => {
-            retryTimerRef.current = null;
-            startVoiceAnswer(questionIndex);
-          }, restartDelay);
+          const isAndroid = /Android/i.test(navigator.userAgent);
+          // On Android mobile devices, when a usable answer is already captured and the pause timer
+          // is armed to submit, do NOT immediately schedule a restart. Restarting triggers
+          // Android Chrome's audible system chime/beep right before submission, and another
+          // beep when aborted upon submission. Desktop keeps 250ms delay.
+          if (!isAndroid) {
+            const isMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const restartDelay = isMobile ? 1500 : 250;
+            retryTimerRef.current = window.setTimeout(() => {
+              retryTimerRef.current = null;
+              startVoiceAnswer(questionIndex);
+            }, restartDelay);
+          }
         } else if (recoveryAction === "retry") {
           retryVoiceAnswer(questionIndex);
         } else {
@@ -2157,8 +2231,17 @@ export default function App() {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("This browser does not expose microphone access.");
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
+      const audioConstraints = {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+      activeMediaStreamRef.current = stream;
+      stopMediaStream(stream);
+      activeMediaStreamRef.current = null;
       microphonePermissionRef.current = true;
       recognitionRetryRef.current = { questionIndex, count: 0 };
       recoveryInProgressRef.current = false;
@@ -3073,8 +3156,9 @@ export default function App() {
                     onChange={(event) => {
                       updateInterviewAnswer(event.target.value);
                       // Mark that the user is actively typing so voice recognition
-                      // doesn't overwrite their edits.
+                      // doesn't overwrite their edits and genuinely stop microphone capture.
                       userTypingRef.current = true;
+                      stopMicrophoneCapture({ preserveAnswerCapture: true });
                       if (userTypingTimerRef.current) window.clearTimeout(userTypingTimerRef.current);
                       userTypingTimerRef.current = window.setTimeout(() => {
                         userTypingTimerRef.current = null;
